@@ -1,33 +1,44 @@
 const express = require("express");
-const Product = require("../models/Product");
-const validateProduct = require("../validators/productValidator");
+const productController = require("../controllers/productController");
+const authMiddleware = require("../middleware/authMiddleware");
+const { validateBody } = require("../middleware/validateMiddleware");
+const { createProductSchema, updateProductSchema } = require("../validators/productValidator");
 
 const router = express.Router();
 
-// GET all products
-router.get("/", async (req, res, next) => {
-    try {
-        const products = await Product.find();
-
-        res.status(200).json({
-            data: products
-        });
-    } catch (error) {
-        next(error);
-    }
+// GET all products (Public)
+router.get("/", (req, res, next) => {
+    productController.getAllProducts(req, res, next);
 });
 
-// CREATE a product
-router.post("/", validateProduct, async (req, res, next) => {
-    try {
-        const product = await Product.create(req.body);
+// GET single product by ID (Public)
+router.get("/:id", (req, res, next) => {
+    productController.getProductById(req, res, next);
+});
 
-        res.status(201).json({
-            data: product
-        });
-    } catch (error) {
-        next(error);
+// CREATE a new product (Protected with JWT middleware)
+router.post(
+    "/",
+    authMiddleware,
+    validateBody(createProductSchema),
+    (req, res, next) => {
+        productController.createProduct(req, res, next);
     }
+);
+
+// UPDATE a product by ID (Protected with JWT middleware)
+router.put(
+    "/:id",
+    authMiddleware,
+    validateBody(updateProductSchema),
+    (req, res, next) => {
+        productController.updateProduct(req, res, next);
+    }
+);
+
+// DELETE a product by ID (Protected with JWT middleware)
+router.delete("/:id", authMiddleware, (req, res, next) => {
+    productController.deleteProduct(req, res, next);
 });
 
 module.exports = router;

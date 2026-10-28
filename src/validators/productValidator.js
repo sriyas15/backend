@@ -1,28 +1,40 @@
 const { z } = require("zod");
 
-const productSchema = z.object({
-    name: z.string().trim().min(1, "Name is required"),
-    price: z.number().positive("Price must be greater than zero")
+const createProductSchema = z.object({
+    name: z
+        .string({ required_error: "Name is required" })
+        .trim()
+        .min(1, "Name is required"),
+    price: z
+        .number({ required_error: "Price is required" })
+        .positive("Price must be greater than zero"),
+    description: z
+        .string()
+        .trim()
+        .optional()
 });
 
-function validateProduct(req, res, next) {
-    const result = productSchema.safeParse(req.body);
+const updateProductSchema = z.object({
+    name: z
+        .string()
+        .trim()
+        .min(1, "Name cannot be empty")
+        .optional(),
+    price: z
+        .number()
+        .positive("Price must be greater than zero")
+        .optional(),
+    description: z
+        .string()
+        .trim()
+        .optional()
+}).refine(data => Object.keys(data).length > 0, {
+    message: "At least one field (name, price, or description) must be provided to update"
+});
 
-    if (!result.success) {
-        return res.status(400).json({
-            error: {
-                code: "VALIDATION_ERROR",
-                message: "Invalid product data",
-                details: result.error.issues.map(issue => ({
-                    field: issue.path.join("."),
-                    message: issue.message
-                }))
-            }
-        });
-    }
-
-    req.body = result.data;
-    next();
-}
-
-module.exports = validateProduct;
+module.exports = {
+    createProductSchema,
+    updateProductSchema,
+    // Backward-compatible alias for existing imports
+    productSchema: createProductSchema
+};
