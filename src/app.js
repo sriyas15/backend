@@ -8,6 +8,7 @@ const path = require("path");
 
 const authRoutes = require("./routes/authRoutes");
 const productRoutes = require("./routes/productRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 const errorMiddleware = require("./middleware/errorMiddleware");
 const { NotFoundError } = require("./errors");
 
@@ -30,6 +31,7 @@ if (fs.existsSync(openApiPath)) {
 // API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
+app.use("/api/admin", adminRoutes);
 
 // 404 Handler for undefined routes
 app.use((req, res, next) => {

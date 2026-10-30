@@ -11,7 +11,9 @@ const signupSchema = z.object({
         .email("Please provide a valid email address"),
     password: z
         .string({ required_error: "Password is required" })
-        .min(6, "Password must be at least 6 characters long")
+        .min(8, "Password must be at least 8 characters long")
+        .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+        .regex(/[0-9]/, "Password must contain at least one number")
 });
 
 const loginSchema = z.object({
@@ -24,7 +26,14 @@ const loginSchema = z.object({
         .min(1, "Password is required")
 });
 
+const refreshSchema = z.object({
+    refreshToken: z
+        .string({ required_error: "Refresh token is required" })
+        .min(1, "Refresh token is required")
+});
+
 module.exports = {
     signupSchema,
-    loginSchema
+    loginSchema,
+    refreshSchema
 };

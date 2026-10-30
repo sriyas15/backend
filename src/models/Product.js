@@ -16,6 +16,12 @@ const productSchema = new mongoose.Schema(
             type: String,
             trim: true,
             default: ""
+        },
+        // The user who created this product
+        owner: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: [true, "Product must have an owner"]
         }
     },
     {
@@ -28,5 +34,8 @@ const productSchema = new mongoose.Schema(
         }
     }
 );
+
+// Index for efficient owner-scoped queries
+productSchema.index({ owner: 1 });
 
 module.exports = mongoose.model("Product", productSchema);

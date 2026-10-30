@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const productRepository = require("../repositories/productRepository");
-const { NotFoundError, BadRequestError } = require("../errors");
+const { NotFoundError, BadRequestError, ForbiddenError } = require("../errors");
 
 class ProductService {
     _validateObjectId(id) {
@@ -9,8 +9,32 @@ class ProductService {
         }
     }
 
-    async getAllProducts(filter = {}) {
-        return await productRepository.findAll(filter);
+    /**
+     * Verify the requesting user can mutate (update/delete) the product.
+     * - Admins can always mutate any product.
+     * - Regular users can only mutate their own products.
+     */
+    _assertOwnerOrAdmin(product, requestingUser) {
+        if (requestingUser.role === "admin") return;
+
+        // Compare ObjectIds as strings to avoid reference issues
+        if (product.owner.toString() !== requestingUser.id) {
+            throw new ForbiddenError("You do not have permission to modify this product");
+        }
+    }
+
+    /**
+     * GET all products.
+     * - Admin sees every product.
+     * - Regular users see only their own products.
+     * - Unauthenticated (requestingUser = null) sees all (public listing).
+     */
+    async getAllProducts(requestingUser = null) {
+        if (!requestingUser || requestingUser.role === "admin") {
+            return await productRepository.findAll();
+        }
+        // Authenticated non-admin: scope to own products only
+        return await productRepository.findAll({ owner: requestingUser.id });
     }
 
     async getProductById(id) {
@@ -22,26 +46,50 @@ class ProductService {
         return product;
     }
 
-    async createProduct(productData) {
-        return await productRepository.create(productData);
+    /**
+     * Create a product owned by the requesting user.
+     */
+    async createProduct(productData, requestingUser) {
+        return await productRepository.create({
+            ...productData,
+            owner: requestingUser.id
+        });
     }
 
-    async updateProduct(id, updateData) {
+    /**
+     * Update — only owner or admin.
+     */
+    async updateProduct(id, updateData, requestingUser) {
         this._validateObjectId(id);
-        const updatedProduct = await productRepository.updateById(id, updateData);
-        if (!updatedProduct) {
+
+        const product = await productRepository.findById(id);
+        if (!product) {
             throw new NotFoundError(`Product not found with id: ${id}`);
         }
-        return updatedProduct;
+
+        this._assertOwnerOrAdmin(product, requestingUser);
+
+        // Prevent owner field from being changed via update payload
+        delete updateData.owner;
+
+        const updated = await productRepository.updateById(id, updateData);
+        return updated;
     }
 
-    async deleteProduct(id) {
+    /**
+     * Delete — only owner or admin.
+     */
+    async deleteProduct(id, requestingUser) {
         this._validateObjectId(id);
-        const deletedProduct = await productRepository.deleteById(id);
-        if (!deletedProduct) {
+
+        const product = await productRepository.findById(id);
+        if (!product) {
             throw new NotFoundError(`Product not found with id: ${id}`);
         }
-        return deletedProduct;
+
+        this._assertOwnerOrAdmin(product, requestingUser);
+
+        return await productRepository.deleteById(id);
     }
 }
 

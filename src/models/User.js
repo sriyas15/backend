@@ -1,5 +1,7 @@
 const mongoose = require("mongoose");
 
+const ROLES = ["user", "admin"];
+
 const userSchema = new mongoose.Schema(
     {
         name: {
@@ -21,6 +23,20 @@ const userSchema = new mongoose.Schema(
             required: [true, "Password is required"],
             minlength: [6, "Password must be at least 6 characters"],
             select: false
+        },
+        role: {
+            type: String,
+            enum: {
+                values: ROLES,
+                message: `Role must be one of: ${ROLES.join(", ")}`
+            },
+            default: "user"
+        },
+        // Hashed refresh token stored server-side for rotation & logout invalidation
+        refreshToken: {
+            type: String,
+            default: null,
+            select: false
         }
     },
     {
@@ -28,6 +44,7 @@ const userSchema = new mongoose.Schema(
         toJSON: {
             transform: function (doc, ret) {
                 delete ret.password;
+                delete ret.refreshToken;
                 delete ret.__v;
                 return ret;
             }

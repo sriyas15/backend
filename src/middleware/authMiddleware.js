@@ -1,6 +1,5 @@
 const jwt = require("jsonwebtoken");
 const { UnauthorizedError } = require("../errors");
-const userRepository = require("../repositories/userRepository");
 
 const authMiddleware = async (req, res, next) => {
     try {
@@ -15,28 +14,21 @@ const authMiddleware = async (req, res, next) => {
             throw new UnauthorizedError("Authorization token is missing");
         }
 
-        const secret = process.env.JWT_SECRET || "fallback_secret_key_antigravity";
+        const secret = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || "access_secret_key";
 
         let decoded;
         try {
             decoded = jwt.verify(token, secret);
         } catch (jwtError) {
             if (jwtError.name === "TokenExpiredError") {
-                throw new UnauthorizedError("Token has expired. Please log in again");
+                throw new UnauthorizedError("Access token has expired. Please refresh your token");
             }
             throw new UnauthorizedError("Invalid authentication token");
         }
 
-        // Attach decoded payload to request
+        // Attach decoded payload — we don't re-query DB on every request
+        // (DB check is already done during token issuance; use /me for live profile)
         req.user = decoded;
-
-        // Optionally verify user still exists in database
-        const user = await userRepository.findById(decoded.id);
-        if (!user) {
-            throw new UnauthorizedError("The user belonging to this token no longer exists");
-        }
-
-        req.currentUser = user;
         next();
     } catch (error) {
         next(error);

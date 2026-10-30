@@ -29,10 +29,38 @@ class AuthController {
         }
     }
 
+    async refresh(req, res, next) {
+        try {
+            const { refreshToken } = req.body;
+            const tokens = await authService.refresh(refreshToken);
+
+            res.status(200).json({
+                message: "Tokens refreshed successfully",
+                data: tokens
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async logout(req, res, next) {
+        try {
+            // req.user is set by authMiddleware (access token required to logout)
+            await authService.logout(req.user.id);
+
+            res.status(200).json({
+                message: "Logged out successfully"
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
     async getMe(req, res, next) {
         try {
+            const user = await authService.getCurrentUser(req.user.id);
             res.status(200).json({
-                data: req.currentUser
+                data: user
             });
         } catch (error) {
             next(error);
